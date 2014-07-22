@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="Big5"?>
+<project default="build" basedir=".">
+  
+  <!-- =================================================================== -->
+  <!-- taskdef                                                             -->
+  <!-- =================================================================== -->
+  
+  <taskdef resource="com/payeasy/core/ant/tasks/dependency/DependencyTask.properties" />
+  
+  <!-- =================================================================== -->
+  <!-- build.properties                                                    -->
+  <!-- =================================================================== -->
+  
+  <property file="${basedir}/build.properties" />
+  <property file="${user.home}/.ant/build.properties" />
+  
+  <!-- =================================================================== -->
+  <!-- property setting                                                    -->
+  <!-- =================================================================== -->
+  
+  <property name="dist.dir" value="${basedir}" />
+  <property name="source.dir" value="${basedir}/source" />
+  <property name="build.dir" value="${basedir}/build" />
+
+  <property name="jar.file" value="${jar.name}.jar" />
+  <property name="jar.target.file" value="${dist.dir}/${jar.file}" />
+  <property name="jar.build.dir" value="${build.dir}/${jar.name}" />
+  <property name="jar.source.dir" value="${source.dir}/java" />
+
+  <property name="docs.dir" value="${basedir}/docs" />
+  <property name="docs.file" value="${jar.name}.zip" />
+  <property name="docs.target.file" value="${docs.dir}/${docs.file}" />
+  
+  <property name="dependency.build.file" value="${build.dir}/mail_content.html" />
+  <property name="dependency.search.file" value="${dist.dir}/${jar.file}" />
+  <property name="dependency.attachment.file" value="${source.dir}/readme.doc" />
+  
+  <!-- =================================================================== -->
+  <!-- classpath                                                           -->
+  <!-- =================================================================== -->
+
+  <path id="jar.classpath">
+    <pathelement location="${user.home}/.ant/lib/javaee.jar" />
+    <fileset dir="${source.dir}/lib">
+      <include name="**/*.jar" />
+      <include name="**/*.zip" />
+    </fileset>
+  </path>
+  
+  <!-- =================================================================== -->
+  <!-- clean                                                               -->
+  <!-- =================================================================== -->
+  
+  <target name="clean">
+    <delete dir="${build.dir}" failonerror="true" />
+    <delete file="${jar.target.file}" failonerror="true" />
+  </target>
+  
+  <!-- =================================================================== -->
+  <!-- prepare                                                             -->
+  <!-- =================================================================== -->
+  
+  <target name="prepare" depends="clean">
+    <mkdir dir="${build.dir}" />
+    <mkdir dir="${jar.build.dir}" />
+    <copy todir="${jar.build.dir}" includeEmptyDirs="false" overwrite="true">
+      <fileset dir="${jar.source.dir}">
+        <exclude name="**/*.java" />
+        <exclude name="**/*.class" />
+      </fileset>
+    </copy>
+  </target>
+  
+  <!-- =================================================================== -->
+  <!-- compile                                                             -->
+  <!-- =================================================================== -->
+  
+  <target name="compile" depends="prepare">
+    <javac debug="on" target="1.5" includeantruntime="no" classpathref="jar.classpath" srcdir="${jar.source.dir}/" destdir="${build.dir}/${jar.name}" />
+  </target>
+  
+  <!-- =================================================================== -->
+  <!-- package                                                             -->
+  <!-- =================================================================== -->
+  
+  <target name="package" depends="compile">
+    <mkdir dir="${jar.build.dir}/META-INF" />
+    <manifest file="${jar.build.dir}/META-INF/MANIFEST.MF" />
+    <jar destfile="${dist.dir}/${jar.file}" manifest="${jar.build.dir}/META-INF/MANIFEST.MF">
+      <fileset dir="${build.dir}/${jar.name}" />
+    </jar>
+  </target>
+  
+  <!-- =================================================================== -->
+  <!-- build                                                               -->
+  <!-- =================================================================== -->
+  
+  <target name="build" depends="package" />
+
+  <!-- =================================================================== -->
+  <!-- javadoc                                                             -->
+  <!-- =================================================================== -->
+  
+  <target name="javadoc">
+    <delete dir="${docs.dir}" failonerror="true" />
+    <mkdir dir="${docs.dir}" />
+
+    <javadoc destdir="${docs.dir}" classpathref="jar.classpath">
+      <fileset dir="${jar.source.dir}" defaultexcludes="yes">
+        <include name="**/*.java" />
+      </fileset>
+      <link href="http://static.springsource.org/spring/docs/2.5.x/api" />
+    </javadoc>
+    
+    <zip destfile="${docs.target.file}">
+      <fileset dir="${docs.dir}">
+        <include name="**/*.*" />
+      </fileset>
+    </zip>
+    
+    <sshexec host="${apache.host}" username="${apache.username}" password="${apache.password}" command="cd ${apache.document.root}; rm -rf ${jar.name}; mkdir ${jar.name};" trust="true" />
+    
+    <scp file="${docs.target.file}" todir="${apache.username}:${apache.password}@${apache.host}:${apache.document.root}/${jar.name}" trust="true" />
+    
+    <sshexec host="${apache.host}" username="${apache.username}" password="${apache.password}" command="cd ${apache.document.root}/${jar.name}; unzip ${docs.file}; rm ${docs.file};" trust="true" />
+  </target>
+  
+  <!-- =================================================================== -->
+  <!-- mail                                                                -->
+  <!-- =================================================================== -->
+  <target name="mail">
+    <dependency
+      searchFile="${dependency.search.file}"
+      searchDir="${dependency.search.dir}/${jar.env}"
+      buildFile="${dependency.build.file}"
+    />
+
+    <mail 
+      mailhost="${mail.host}" 
+      mailport="${mail.port}" 
+      from="${mail.from}"
+      tolist="${mail.to}"
+      subject="${jar.file} ${jar.env} 變更通知" 
+      charset="Big5" 
+      messagemimetype="text/html" 
+      messagefile="${dependency.build.file}"
+      files="${dependency.attachment.file}"
+    />
+  </target>
+
+  <import file="${user.home}/.ant/imports/jar-diff-targets.xml" />
+    
+</project>

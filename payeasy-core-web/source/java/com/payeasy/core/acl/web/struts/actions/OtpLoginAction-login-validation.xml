@@ -1,0 +1,19 @@
+<!DOCTYPE validators PUBLIC "-//OpenSymphony Group//XWork Validator 1.0.2//EN"
+  "http://www.opensymphony.com/xwork/xwork-validator-1.0.2.dtd">
+<validators>
+  <field name="token">
+    <field-validator type="requiredstring">
+      <message>請輸入RSA Token</message>
+    </field-validator>
+  </field>
+  <field name="serial">
+    <field-validator type="fieldexpression">
+      <param name="expression">
+        <![CDATA[
+          (token == null || serial != null)
+        ]]>
+      </param>
+      <message>請輸入RSA Token</message>
+    </field-validator>
+  </field>
+</validators>
